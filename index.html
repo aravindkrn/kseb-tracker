@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KSEB Tracker PWA</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="style.css">
+    <meta name="theme-color" content="#2196F3">
+    <link rel="icon" href="data:,">
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js');
+        }
+        window.addEventListener('load', () => {
+            document.body.classList.add('loaded');
+        });
+    </script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Splash Screen -->
+        <div id="splash" class="splash">
+            <div class="logo">⚡ KSEB Tracker</div>
+            <div class="spinner"></div>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="nav" id="nav">
+            <button class="nav-btn active" data-tab="dashboard">Dashboard</button>
+            <button class="nav-btn" data-tab="log">Log Usage</button>
+            <button class="nav-btn" data-tab="history">History</button>
+            <button class="nav-btn" data-tab="settings">Settings</button>
+            <button class="nav-btn" data-tab="info">Info</button>
+        </nav>
+
+        <!-- Dashboard Tab -->
+        <main class="tab active" id="dashboard">
+            <div class="card">
+                <h2>Current Bill Estimate</h2>
+                <div id="bill-summary" class="grid"></div>
+                <div id="bill-detail"></div>
+            </div>
+            <div class="card">
+                <h3>Daily Usage Chart</h3>
+                <canvas id="usage-chart" width="300" height="200"></canvas>
+            </div>
+            <div class="card">
+                <h3>Predictions & Tips</h3>
+                <div id="predictions"></div>
+            </div>
+        </main>
+
+        <!-- Log Usage Tab -->
+        <main class="tab" id="log">
+            <div class="card">
+                <h2>Enter Current Readings</h2>
+                <div class="input-group">
+                    <label>T1 (Normal): <input type="number" id="t1" step="0.01"></label>
+                    <label>T2 (Peak): <input type="number" id="t2" step="0.01"></label>
+                    <label>T3 (Off-peak): <input type="number" id="t3" step="0.01"></label>
+                </div>
+                <button id="save-reading" class="btn-primary full">Save Reading & Update Bill</button>
+            </div>
+        </main>
+
+        <!-- History Tab -->
+        <main class="tab" id="history">
+            <div class="card">
+                <h3>Usage History</h3>
+                <ul id="history-list"></ul>
+            </div>
+        </main>
+
+        <!-- Settings Tab -->
+        <main class="tab" id="settings">
+            <div class="card">
+                <h2>Profile Settings</h2>
+                <div id="editable-settings"></div>
+                <button id="save-config" class="btn-primary">Save Settings</button>
+            </div>
+            <div class="card">
+                <h3>Info (Read-only)</h3>
+                <div id="info-settings"></div>
+            </div>
+            <button id="share-whatsapp" class="btn-secondary full">Share to WhatsApp</button>
+            <button id="export-data" class="btn-secondary full">Export Data</button>
+        </main>
+
+        <!-- Info Tab -->
+        <main class="tab" id="info">
+            <div class="card full-height">
+                <h2>About KSEB Tracker</h2>
+                <div id="app-info"></div>
+            </div>
+        </main>
+
+        <!-- Notifications Permission -->
+        <div id="notify-prompt" class="toast hidden">
+            Enable daily reminders to log usage?
+            <button id="enable-notify">Yes</button>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
+[file:1][file:2]
