@@ -1,108 +1,212 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KSEB Tracker PWA</title>
-    <link rel="manifest" href="manifest.json">
-    <link rel="stylesheet" href="style.css">
-    <meta name="theme-color" content="#2196F3">
-    <link rel="icon" href="data:,">
-    <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js');
-        }
-        window.addEventListener('load', () => {
-            document.body.classList.add('loaded');
-        });
-    </script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<meta name="theme-color" content="#6366f1"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="KSEBTrack"/>
+<title>KSEB Tracker</title>
+<link rel="manifest" href="manifest.json"/>
+<link rel="stylesheet" href="style.css"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
 </head>
 <body>
-    <div class="app-container">
-        <!-- Splash Screen -->
-        <div id="splash" class="splash">
-            <div class="logo">⚡ KSEB Tracker</div>
-            <div class="spinner"></div>
-        </div>
 
-        <!-- Navigation -->
-        <nav class="nav" id="nav">
-            <button class="nav-btn active" data-tab="dashboard">Dashboard</button>
-            <button class="nav-btn" data-tab="log">Log Usage</button>
-            <button class="nav-btn" data-tab="history">History</button>
-            <button class="nav-btn" data-tab="settings">Settings</button>
-            <button class="nav-btn" data-tab="info">Info</button>
-        </nav>
+<header class="app-header">
+  <h1>⚡ KSEB Tracker</h1>
+  <p id="headerSub">LT-1 Domestic · TOD Meter</p>
+</header>
 
-        <!-- Dashboard Tab -->
-        <main class="tab active" id="dashboard">
-            <div class="card">
-                <h2>Current Bill Estimate</h2>
-                <div id="bill-summary" class="grid"></div>
-                <div id="bill-detail"></div>
-            </div>
-            <div class="card">
-                <h3>Daily Usage Chart</h3>
-                <canvas id="usage-chart" width="300" height="200"></canvas>
-            </div>
-            <div class="card">
-                <h3>Predictions & Tips</h3>
-                <div id="predictions"></div>
-            </div>
-        </main>
-
-        <!-- Log Usage Tab -->
-        <main class="tab" id="log">
-            <div class="card">
-                <h2>Enter Current Readings</h2>
-                <div class="input-group">
-                    <label>T1 (Normal): <input type="number" id="t1" step="0.01"></label>
-                    <label>T2 (Peak): <input type="number" id="t2" step="0.01"></label>
-                    <label>T3 (Off-peak): <input type="number" id="t3" step="0.01"></label>
-                </div>
-                <button id="save-reading" class="btn-primary full">Save Reading & Update Bill</button>
-            </div>
-        </main>
-
-        <!-- History Tab -->
-        <main class="tab" id="history">
-            <div class="card">
-                <h3>Usage History</h3>
-                <ul id="history-list"></ul>
-            </div>
-        </main>
-
-        <!-- Settings Tab -->
-        <main class="tab" id="settings">
-            <div class="card">
-                <h2>Profile Settings</h2>
-                <div id="editable-settings"></div>
-                <button id="save-config" class="btn-primary">Save Settings</button>
-            </div>
-            <div class="card">
-                <h3>Info (Read-only)</h3>
-                <div id="info-settings"></div>
-            </div>
-            <button id="share-whatsapp" class="btn-secondary full">Share to WhatsApp</button>
-            <button id="export-data" class="btn-secondary full">Export Data</button>
-        </main>
-
-        <!-- Info Tab -->
-        <main class="tab" id="info">
-            <div class="card full-height">
-                <h2>About KSEB Tracker</h2>
-                <div id="app-info"></div>
-            </div>
-        </main>
-
-        <!-- Notifications Permission -->
-        <div id="notify-prompt" class="toast hidden">
-            Enable daily reminders to log usage?
-            <button id="enable-notify">Yes</button>
-        </div>
+<main>
+  <!-- Dashboard -->
+  <section id="page-dashboard" class="page active">
+    <div class="bill-hero">
+      <div class="label">Estimated Bill Today</div>
+      <div class="amount" id="heroAmount">₹ –</div>
+      <div class="sub" id="heroSub">Log a reading to begin</div>
     </div>
+    <div class="stats-grid">
+      <div class="stat-card"><div class="val" id="stUnits">–</div><div class="lbl">Units Used</div></div>
+      <div class="stat-card"><div class="val" id="stDays">–</div><div class="lbl">Days Elapsed</div></div>
+      <div class="stat-card"><div class="val" id="stAvg">–</div><div class="lbl">Avg u/day</div></div>
+      <div class="stat-card"><div class="val" id="stProj">₹ –</div><div class="lbl">Projected Bill</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Billing Cycle Progress</div>
+      <div class="progress-wrap">
+        <div class="progress-label"><span id="progDayLabel">Day 0</span><span id="progEndLabel">Day 60</span></div>
+        <div class="progress-bar-bg"><div class="progress-bar-fill" id="progBar" style="width:0%"></div></div>
+      </div>
+    </div>
+    <div class="card" id="breakupCard" style="display:none">
+      <div class="card-title">Bill Breakup (Current)</div>
+      <table id="breakupTable"><tbody></tbody></table>
+    </div>
+    <div class="card" id="projCard" style="display:none">
+      <div class="card-title">End-of-Cycle Projection</div>
+      <table id="projTable"><tbody></tbody></table>
+    </div>
+    <div class="card">
+      <div class="card-title">Tariff Mode</div>
+      <div id="tariffBadge">–</div>
+    </div>
+    <button class="btn btn-wa btn-block" onclick="shareToWhatsApp()">📲 Share to WhatsApp</button>
+  </section>
 
-    <script src="app.js"></script>
+  <!-- Log Reading -->
+  <section id="page-log" class="page">
+    <div class="card">
+      <div class="card-title">📟 Add Meter Reading</div>
+      <div class="form-group"><label>T1 – Normal Reading</label><input type="number" id="inT1" placeholder="e.g. 12120" step="0.1"/></div>
+      <div class="form-group"><label>T2 – Peak Reading</label><input type="number" id="inT2" placeholder="e.g. 5380" step="0.1"/></div>
+      <div class="form-group"><label>T3 – Off-Peak Reading</label><input type="number" id="inT3" placeholder="e.g. 6700" step="0.1"/></div>
+      <div class="form-group"><label>Date &amp; Time</label><input type="datetime-local" id="inDateTime"/></div>
+      <button class="btn btn-primary btn-block" onclick="addReading()">💾 Save Reading</button>
+    </div>
+    <div class="card">
+      <div class="card-title">📋 Reading History</div>
+      <div id="logList"><p style="color:var(--muted);font-size:.82rem;text-align:center;padding:.5rem">No readings yet.</p></div>
+    </div>
+  </section>
+
+  <!-- Charts -->
+  <section id="page-charts" class="page">
+    <div class="card"><div class="card-title">📈 Daily Consumption (Units)</div><div class="chart-wrap"><canvas id="chartDaily"></canvas></div></div>
+    <div class="card"><div class="card-title">💰 Cumulative Bill Trend</div><div class="chart-wrap"><canvas id="chartBill"></canvas></div></div>
+    <div class="card"><div class="card-title">🕐 TOD Usage Breakdown</div><div class="chart-wrap" style="height:200px"><canvas id="chartTOD"></canvas></div></div>
+    <div class="card"><div class="card-title">🔮 Prediction vs Actual</div><div class="chart-wrap"><canvas id="chartPred"></canvas></div></div>
+  </section>
+
+  <!-- Settings -->
+  <section id="page-settings" class="page">
+    <div class="card">
+      <div class="card-title">👤 Profile & Settings</div>
+      <div class="form-group"><label>Your Name</label><input type="text" id="cfgName" placeholder="e.g. Aravind"/></div>
+      <div class="form-group"><label>Bill Start Date</label><input type="date" id="cfgStartDate"/></div>
+      <div class="form-group"><label>Start Reading – T1</label><input type="number" id="cfgT1" step="0.1"/></div>
+      <div class="form-group"><label>Start Reading – T2</label><input type="number" id="cfgT2" step="0.1"/></div>
+      <div class="form-group"><label>Start Reading – T3</label><input type="number" id="cfgT3" step="0.1"/></div>
+      <div class="form-group">
+        <label>Tariff Mode</label>
+        <select id="cfgTariff">
+          <option value="non-telescopic-tod">Non-Telescopic + TOD (Default/KSEB)</option>
+          <option value="telescopic">Telescopic (≤250 u/mo)</option>
+          <option value="auto">Auto (detect by usage)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>TOD Mode</label>
+        <select id="cfgTOD">
+          <option value="auto">Auto</option>
+          <option value="on">On (TOD meter)</option>
+          <option value="off">Off (non-TOD)</option>
+        </select>
+      </div>
+      <button class="btn btn-primary btn-block" onclick="saveSettings()">✅ Save Settings</button>
+      <button class="btn btn-danger btn-block" onclick="clearAllData()">🗑️ Reset All Data</button>
+    </div>
+    <div class="card">
+      <div class="card-title">🔔 Daily Reminder</div>
+      <div class="form-group"><label>Remind me at</label><input type="time" id="cfgReminderTime" value="20:00"/></div>
+      <button class="btn btn-success btn-block" onclick="scheduleNotification()">
+        Set Reminder &nbsp;<span class="notif-status" id="notifDot"></span>
+      </button>
+    </div>
+  </section>
+
+  <!-- Info -->
+  <section id="page-info" class="page">
+    <div class="info-section">
+      <details open>
+        <summary>📖 About This App</summary>
+        <div class="details-body">
+          <p><strong>KSEB TOD Consumption Tracker</strong> — estimates your bill per <strong>KSEB LT-1 Domestic (Single-phase)</strong> rules: slab/flat-rate billing, TOD multipliers, duty, fuel surcharge &amp; fixed charges.</p>
+        </div>
+      </details>
+      <details>
+        <summary>⚡ Tariff Classification Rules</summary>
+        <div class="details-body">
+          <ul style="padding-left:1rem;line-height:2">
+            <li>Reviewed twice yearly: <code>Jan–Feb</code> and <code>Jul–Aug</code></li>
+            <li>Avg monthly usage &gt; 250 units → <code>Non-Telescopic + TOD</code></li>
+            <li>Once Non-Telescopic, stays until next review</li>
+            <li>≤ 250 units/month at review → back to Telescopic</li>
+          </ul>
+        </div>
+      </details>
+      <details>
+        <summary>📊 Telescopic Tariff (≤250 u/mo)</summary>
+        <div class="details-body">Slab-wise tiered billing. For bi-monthly billing, slab limits are <strong>doubled</strong>. TOD multipliers: T1 −10%, T2 +25%, T3 normal.</div>
+      </details>
+      <details>
+        <summary>💡 Non-Telescopic Tariff (&gt;250 u/mo)</summary>
+        <div class="details-body">Entire consumption billed at a <strong>single flat rate</strong> from non-telescopic table. TOD multipliers applied on usage shares.</div>
+      </details>
+      <details>
+        <summary>🧮 Fixed Charges &amp; Add-ons</summary>
+        <div class="details-body">
+          <ul style="padding-left:1rem;line-height:2">
+            <li>Fixed Charges: slab-based per month; bi-monthly = 2× monthly FC</li>
+            <li>Electricity Duty = <code>10%</code> of Energy Charges</li>
+            <li>Fuel Surcharge = <code>10 paise/unit</code></li>
+          </ul>
+        </div>
+      </details>
+      <details>
+        <summary>📅 Billing Due Date Logic</summary>
+        <div class="details-body">Always the <strong>20th of the 2nd month</strong> after bill start. Example: Sep 20 start → Nov 20 due. Handles Feb and 31-day months automatically.</div>
+      </details>
+      <details>
+        <summary>🕐 TOD Windows</summary>
+        <div class="details-body">
+          <ul style="padding-left:1rem;line-height:2">
+            <li><code>T1</code> Normal: −10% discount (×0.90)</li>
+            <li><code>T2</code> Peak: +25% surcharge (×1.25)</li>
+            <li><code>T3</code> Off-peak: normal rate (×1.00)</li>
+          </ul>
+        </div>
+      </details>
+      <details>
+        <summary>💡 Tips to Save on Bill</summary>
+        <div class="details-body" id="tipsBody"></div>
+      </details>
+      <details>
+        <summary>🛠️ Current Tariff Info</summary>
+        <div class="details-body" id="tariffInfoBody"></div>
+      </details>
+    </div>
+  </section>
+</main>
+
+<nav class="bottom-nav">
+  <button class="nav-btn active" onclick="showPage('dashboard',this)"><span class="icon">🏠</span>Dashboard</button>
+  <button class="nav-btn" onclick="showPage('log',this)"><span class="icon">📟</span>Log</button>
+  <button class="nav-btn" onclick="showPage('charts',this);renderCharts()"><span class="icon">📊</span>Charts</button>
+  <button class="nav-btn" onclick="showPage('settings',this)"><span class="icon">⚙️</span>Settings</button>
+  <button class="nav-btn" onclick="showPage('info',this);renderInfo()"><span class="icon">ℹ️</span>Info</button>
+</nav>
+
+<div id="toast"></div>
+
+<!-- Edit Modal -->
+<div id="editModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center">
+  <div style="background:var(--card);border-radius:var(--radius);padding:1.3rem;width:90%;max-width:360px;border:1px solid var(--border)">
+    <div style="font-weight:700;margin-bottom:.8rem">✏️ Edit Reading</div>
+    <input type="hidden" id="editIdx"/>
+    <div class="form-group"><label>T1</label><input type="number" id="editT1" step="0.1"/></div>
+    <div class="form-group"><label>T2</label><input type="number" id="editT2" step="0.1"/></div>
+    <div class="form-group"><label>T3</label><input type="number" id="editT3" step="0.1"/></div>
+    <div style="display:flex;gap:.5rem;margin-top:.5rem">
+      <button class="btn btn-primary" style="flex:1" onclick="saveEdit()">Save</button>
+      <button class="btn btn-ghost" style="flex:1" onclick="closeEdit()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
 </body>
 </html>
-[file:1][file:2]
