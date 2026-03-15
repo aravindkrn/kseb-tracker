@@ -1,247 +1,212 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0, viewport-fit=cover"
-  />
-  <title>KSEB Tracker</title>
-  <meta name="theme-color" content="#08101f" />
-  <meta name="description" content="KSEB electricity bill tracker with due date, tariff modes, TOD readings, bill history, and PWA support." />
-  <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css" />
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<meta name="theme-color" content="#6366f1"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="KSEBTrack"/>
+<title>KSEB Tracker</title>
+<link rel="manifest" href="manifest.json"/>
+<link rel="stylesheet" href="style.css"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
 </head>
 <body>
-  <div class="app-shell">
-    <div class="bg-grid"></div>
-    <div class="bg-orb orb-1"></div>
-    <div class="bg-orb orb-2"></div>
-    <div class="bg-orb orb-3"></div>
 
-    <header class="topbar glass">
-      <div>
-        <h1>KSEB Tracker</h1>
-        <p class="muted">Smart billing, futuristic UI, accurate tariff helpers</p>
+<header class="app-header">
+  <h1>⚡ KSEB Tracker</h1>
+  <p id="headerSub">LT-1 Domestic · TOD Meter</p>
+</header>
+
+<main>
+  <!-- Dashboard -->
+  <section id="page-dashboard" class="page active">
+    <div class="bill-hero">
+      <div class="label">Estimated Bill Today</div>
+      <div class="amount" id="heroAmount">₹ –</div>
+      <div class="sub" id="heroSub">Log a reading to begin</div>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card"><div class="val" id="stUnits">–</div><div class="lbl">Units Used</div></div>
+      <div class="stat-card"><div class="val" id="stDays">–</div><div class="lbl">Days Elapsed</div></div>
+      <div class="stat-card"><div class="val" id="stAvg">–</div><div class="lbl">Avg u/day</div></div>
+      <div class="stat-card"><div class="val" id="stProj">₹ –</div><div class="lbl">Projected Bill</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Billing Cycle Progress</div>
+      <div class="progress-wrap">
+        <div class="progress-label"><span id="progDayLabel">Day 0</span><span id="progEndLabel">Day 60</span></div>
+        <div class="progress-bar-bg"><div class="progress-bar-fill" id="progBar" style="width:0%"></div></div>
       </div>
-      <div class="topbar-actions">
-        <button id="themeToggle" class="btn ghost">Theme</button>
-        <button id="installBtn" class="btn hidden">Install</button>
+    </div>
+    <div class="card" id="breakupCard" style="display:none">
+      <div class="card-title">Bill Breakup (Current)</div>
+      <table id="breakupTable"><tbody></tbody></table>
+    </div>
+    <div class="card" id="projCard" style="display:none">
+      <div class="card-title">End-of-Cycle Projection</div>
+      <table id="projTable"><tbody></tbody></table>
+    </div>
+    <div class="card">
+      <div class="card-title">Tariff Mode</div>
+      <div id="tariffBadge">–</div>
+    </div>
+    <button class="btn btn-wa btn-block" onclick="shareToWhatsApp()">📲 Share to WhatsApp</button>
+  </section>
+
+  <!-- Log Reading -->
+  <section id="page-log" class="page">
+    <div class="card">
+      <div class="card-title">📟 Add Meter Reading</div>
+      <div class="form-group"><label>T1 – Normal Reading</label><input type="number" id="inT1" placeholder="e.g. 12120" step="0.1"/></div>
+      <div class="form-group"><label>T2 – Peak Reading</label><input type="number" id="inT2" placeholder="e.g. 5380" step="0.1"/></div>
+      <div class="form-group"><label>T3 – Off-Peak Reading</label><input type="number" id="inT3" placeholder="e.g. 6700" step="0.1"/></div>
+      <div class="form-group"><label>Date &amp; Time</label><input type="datetime-local" id="inDateTime"/></div>
+      <button class="btn btn-primary btn-block" onclick="addReading()">💾 Save Reading</button>
+    </div>
+    <div class="card">
+      <div class="card-title">📋 Reading History</div>
+      <div id="logList"><p style="color:var(--muted);font-size:.82rem;text-align:center;padding:.5rem">No readings yet.</p></div>
+    </div>
+  </section>
+
+  <!-- Charts -->
+  <section id="page-charts" class="page">
+    <div class="card"><div class="card-title">📈 Daily Consumption (Units)</div><div class="chart-wrap"><canvas id="chartDaily"></canvas></div></div>
+    <div class="card"><div class="card-title">💰 Cumulative Bill Trend</div><div class="chart-wrap"><canvas id="chartBill"></canvas></div></div>
+    <div class="card"><div class="card-title">🕐 TOD Usage Breakdown</div><div class="chart-wrap" style="height:200px"><canvas id="chartTOD"></canvas></div></div>
+    <div class="card"><div class="card-title">🔮 Prediction vs Actual</div><div class="chart-wrap"><canvas id="chartPred"></canvas></div></div>
+  </section>
+
+  <!-- Settings -->
+  <section id="page-settings" class="page">
+    <div class="card">
+      <div class="card-title">👤 Profile & Settings</div>
+      <div class="form-group"><label>Your Name</label><input type="text" id="cfgName" placeholder="e.g. Aravind"/></div>
+      <div class="form-group"><label>Bill Start Date</label><input type="date" id="cfgStartDate"/></div>
+      <div class="form-group"><label>Start Reading – T1</label><input type="number" id="cfgT1" step="0.1"/></div>
+      <div class="form-group"><label>Start Reading – T2</label><input type="number" id="cfgT2" step="0.1"/></div>
+      <div class="form-group"><label>Start Reading – T3</label><input type="number" id="cfgT3" step="0.1"/></div>
+      <div class="form-group">
+        <label>Tariff Mode</label>
+        <select id="cfgTariff">
+          <option value="non-telescopic-tod">Non-Telescopic + TOD (Default/KSEB)</option>
+          <option value="telescopic">Telescopic (≤250 u/mo)</option>
+          <option value="auto">Auto (detect by usage)</option>
+        </select>
       </div>
-    </header>
+      <div class="form-group">
+        <label>TOD Mode</label>
+        <select id="cfgTOD">
+          <option value="auto">Auto</option>
+          <option value="on">On (TOD meter)</option>
+          <option value="off">Off (non-TOD)</option>
+        </select>
+      </div>
+      <button class="btn btn-primary btn-block" onclick="saveSettings()">✅ Save Settings</button>
+      <button class="btn btn-danger btn-block" onclick="clearAllData()">🗑️ Reset All Data</button>
+    </div>
+    <div class="card">
+      <div class="card-title">🔔 Daily Reminder</div>
+      <div class="form-group"><label>Remind me at</label><input type="time" id="cfgReminderTime" value="20:00"/></div>
+      <button class="btn btn-success btn-block" onclick="scheduleNotification()">
+        Set Reminder &nbsp;<span class="notif-status" id="notifDot"></span>
+      </button>
+    </div>
+  </section>
 
-    <main class="layout">
-      <aside class="sidebar glass">
-        <button class="nav-btn active" data-tab="dashboard">Dashboard</button>
-        <button class="nav-btn" data-tab="entry">New Entry</button>
-        <button class="nav-btn" data-tab="history">History</button>
-        <button class="nav-btn" data-tab="statistics">Statistics</button>
-        <button class="nav-btn" data-tab="settings">Settings</button>
-      </aside>
+  <!-- Info -->
+  <section id="page-info" class="page">
+    <div class="info-section">
+      <details open>
+        <summary>📖 About This App</summary>
+        <div class="details-body">
+          <p><strong>KSEB TOD Consumption Tracker</strong> — estimates your bill per <strong>KSEB LT-1 Domestic (Single-phase)</strong> rules: slab/flat-rate billing, TOD multipliers, duty, fuel surcharge &amp; fixed charges.</p>
+        </div>
+      </details>
+      <details>
+        <summary>⚡ Tariff Classification Rules</summary>
+        <div class="details-body">
+          <ul style="padding-left:1rem;line-height:2">
+            <li>Reviewed twice yearly: <code>Jan–Feb</code> and <code>Jul–Aug</code></li>
+            <li>Avg monthly usage &gt; 250 units → <code>Non-Telescopic + TOD</code></li>
+            <li>Once Non-Telescopic, stays until next review</li>
+            <li>≤ 250 units/month at review → back to Telescopic</li>
+          </ul>
+        </div>
+      </details>
+      <details>
+        <summary>📊 Telescopic Tariff (≤250 u/mo)</summary>
+        <div class="details-body">Slab-wise tiered billing. For bi-monthly billing, slab limits are <strong>doubled</strong>. TOD multipliers: T1 −10%, T2 +25%, T3 normal.</div>
+      </details>
+      <details>
+        <summary>💡 Non-Telescopic Tariff (&gt;250 u/mo)</summary>
+        <div class="details-body">Entire consumption billed at a <strong>single flat rate</strong> from non-telescopic table. TOD multipliers applied on usage shares.</div>
+      </details>
+      <details>
+        <summary>🧮 Fixed Charges &amp; Add-ons</summary>
+        <div class="details-body">
+          <ul style="padding-left:1rem;line-height:2">
+            <li>Fixed Charges: slab-based per month; bi-monthly = 2× monthly FC</li>
+            <li>Electricity Duty = <code>10%</code> of Energy Charges</li>
+            <li>Fuel Surcharge = <code>10 paise/unit</code></li>
+          </ul>
+        </div>
+      </details>
+      <details>
+        <summary>📅 Billing Due Date Logic</summary>
+        <div class="details-body">Always the <strong>20th of the 2nd month</strong> after bill start. Example: Sep 20 start → Nov 20 due. Handles Feb and 31-day months automatically.</div>
+      </details>
+      <details>
+        <summary>🕐 TOD Windows</summary>
+        <div class="details-body">
+          <ul style="padding-left:1rem;line-height:2">
+            <li><code>T1</code> Normal: −10% discount (×0.90)</li>
+            <li><code>T2</code> Peak: +25% surcharge (×1.25)</li>
+            <li><code>T3</code> Off-peak: normal rate (×1.00)</li>
+          </ul>
+        </div>
+      </details>
+      <details>
+        <summary>💡 Tips to Save on Bill</summary>
+        <div class="details-body" id="tipsBody"></div>
+      </details>
+      <details>
+        <summary>🛠️ Current Tariff Info</summary>
+        <div class="details-body" id="tariffInfoBody"></div>
+      </details>
+    </div>
+  </section>
+</main>
 
-      <section class="content">
-        <section id="dashboard" class="tab-panel active">
-          <div class="hero glass shine">
-            <div>
-              <h2>Next bill preview</h2>
-              <p class="muted">Estimate based on your latest readings and tariff mode.</p>
-            </div>
-            <div class="hero-badge" id="appMetaBadge"></div>
-          </div>
+<nav class="bottom-nav">
+  <button class="nav-btn active" onclick="showPage('dashboard',this)"><span class="icon">🏠</span>Dashboard</button>
+  <button class="nav-btn" onclick="showPage('log',this)"><span class="icon">📟</span>Log</button>
+  <button class="nav-btn" onclick="showPage('charts',this);renderCharts()"><span class="icon">📊</span>Charts</button>
+  <button class="nav-btn" onclick="showPage('settings',this)"><span class="icon">⚙️</span>Settings</button>
+  <button class="nav-btn" onclick="showPage('info',this);renderInfo()"><span class="icon">ℹ️</span>Info</button>
+</nav>
 
-          <div class="card-grid">
-            <article class="card glass glow">
-              <h3>Total units</h3>
-              <div class="metric" id="metricUnits">0</div>
-              <p class="muted">Bi-monthly units from latest reading set.</p>
-            </article>
-            <article class="card glass glow">
-              <h3>Estimated energy charge</h3>
-              <div class="metric" id="metricEnergy">₹0</div>
-              <p class="muted">Excludes duty/fixed charges unless you enter them manually.</p>
-            </article>
-            <article class="card glass glow">
-              <h3>Due date</h3>
-              <div class="metric" id="metricDueDate">—</div>
-              <p class="muted">Default 20th bimonthly unless you override it.</p>
-            </article>
-          </div>
+<div id="toast"></div>
 
-          <div class="card glass">
-            <h3>Tariff mode guidance</h3>
-            <p id="dashboardTariffHelp" class="muted"></p>
-          </div>
-        </section>
-
-        <section id="entry" class="tab-panel">
-          <div class="card glass shine">
-            <h2>New reading entry</h2>
-            <p class="muted">Enter end readings for the current billing cycle.</p>
-          </div>
-
-          <div class="card glass">
-            <div class="form-grid three">
-              <div>
-                <label>Entry date</label>
-                <input id="entryDate" type="date" />
-              </div>
-              <div>
-                <label>T1 End Reading (Normal)</label>
-                <input id="endT1" type="number" step="0.01" />
-              </div>
-              <div>
-                <label>T2 End Reading (Peak)</label>
-                <input id="endT2" type="number" step="0.01" />
-              </div>
-              <div>
-                <label>T3 End Reading (Off-peak)</label>
-                <input id="endT3" type="number" step="0.01" />
-              </div>
-              <div>
-                <label>Additional charges (optional)</label>
-                <input id="otherCharges" type="number" step="0.01" value="0" />
-              </div>
-              <div>
-                <label>Notes</label>
-                <input id="entryNotes" type="text" placeholder="Optional note" />
-              </div>
-            </div>
-
-            <div class="action-row">
-              <button id="saveEntryBtn" class="btn primary">Save Entry</button>
-              <button id="previewEntryBtn" class="btn ghost">Preview</button>
-            </div>
-
-            <div id="entryPreview" class="preview-box hidden"></div>
-          </div>
-        </section>
-
-        <section id="history" class="tab-panel">
-          <div class="card glass">
-            <h2>Bill history</h2>
-            <div id="historyList" class="history-list"></div>
-          </div>
-        </section>
-
-        <section id="statistics" class="tab-panel">
-          <div class="card glass">
-            <h2>Statistics</h2>
-            <div class="stats-grid">
-              <div class="mini-stat">
-                <span>Average units</span>
-                <strong id="avgUnits">0</strong>
-              </div>
-              <div class="mini-stat">
-                <span>Average amount</span>
-                <strong id="avgAmount">₹0</strong>
-              </div>
-              <div class="mini-stat">
-                <span>Total entries</span>
-                <strong id="totalEntries">0</strong>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section id="settings" class="tab-panel">
-          <div class="card glass shine">
-            <h2>Settings</h2>
-            <p class="muted">Billing rules, tariff mode, notifications, and bill upload.</p>
-          </div>
-
-          <div class="card glass">
-            <div class="form-grid three">
-              <div>
-                <label>Billing cycle start date</label>
-                <input id="billingStartDate" type="date" />
-              </div>
-
-              <div>
-                <label>Due date mode</label>
-                <select id="dueDateMode">
-                  <option value="default">Default bimonthly 20th</option>
-                  <option value="custom">Custom due date</option>
-                </select>
-              </div>
-
-              <div id="customDueDateWrap" class="hidden">
-                <label>Custom due date</label>
-                <input id="customDueDate" type="date" />
-              </div>
-
-              <div>
-                <label>Tariff mode</label>
-                <select id="tariffMode">
-                  <option value="domestic_telescopic">Domestic Telescopic</option>
-                  <option value="domestic_non_telescopic">Domestic Non-Telescopic</option>
-                  <option value="domestic_tod_over_500">Domestic ToD Above 500 / month</option>
-                </select>
-              </div>
-
-              <div>
-                <label>Start T1 Reading (Normal)</label>
-                <input id="startT1" type="number" step="0.01" />
-              </div>
-
-              <div>
-                <label>Start T2 Reading (Peak)</label>
-                <input id="startT2" type="number" step="0.01" />
-              </div>
-
-              <div>
-                <label>Start T3 Reading (Off-peak)</label>
-                <input id="startT3" type="number" step="0.01" />
-              </div>
-
-              <div>
-                <label>Fixed charge per bill (optional)</label>
-                <input id="fixedCharge" type="number" step="0.01" value="0" />
-              </div>
-
-              <div>
-                <label>Electricity duty / surcharge (optional)</label>
-                <input id="dutyCharge" type="number" step="0.01" value="0" />
-              </div>
-
-              <div>
-                <label>Reminder time</label>
-                <input id="reminderTime" type="time" />
-              </div>
-            </div>
-
-            <div class="info-panel">
-              <strong>Tariff mode explanation</strong>
-              <p id="tariffModeHelp" class="muted"></p>
-            </div>
-
-            <div class="info-panel">
-              <strong>Official references</strong>
-              <div class="doc-links" id="officialDocLinks"></div>
-            </div>
-
-            <div class="info-panel">
-              <strong>Last bill upload</strong>
-              <input id="lastBillUpload" type="file" accept=".pdf,image/*" />
-              <p class="muted">This version stores the file metadata and preview name. OCR auto-fill is scaffolded for later enhancement.</p>
-              <div id="lastBillMeta" class="muted"></div>
-            </div>
-
-            <div class="action-row">
-              <button id="saveSettingsBtn" class="btn primary">Save Settings</button>
-              <button id="notifyBtn" class="btn ghost">Enable Notifications</button>
-              <button id="testNotifyBtn" class="btn ghost">Test Notification</button>
-            </div>
-
-            <div class="app-meta-row">
-              <span id="appVersionText"></span>
-              <span id="appUpdatedText"></span>
-            </div>
-          </div>
-        </section>
-      </section>
-    </main>
+<!-- Edit Modal -->
+<div id="editModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center">
+  <div style="background:var(--card);border-radius:var(--radius);padding:1.3rem;width:90%;max-width:360px;border:1px solid var(--border)">
+    <div style="font-weight:700;margin-bottom:.8rem">✏️ Edit Reading</div>
+    <input type="hidden" id="editIdx"/>
+    <div class="form-group"><label>T1</label><input type="number" id="editT1" step="0.1"/></div>
+    <div class="form-group"><label>T2</label><input type="number" id="editT2" step="0.1"/></div>
+    <div class="form-group"><label>T3</label><input type="number" id="editT3" step="0.1"/></div>
+    <div style="display:flex;gap:.5rem;margin-top:.5rem">
+      <button class="btn btn-primary" style="flex:1" onclick="saveEdit()">Save</button>
+      <button class="btn btn-ghost" style="flex:1" onclick="closeEdit()">Cancel</button>
+    </div>
   </div>
+</div>
 
-  <script src="app.js"></script>
+<script src="app.js"></script>
 </body>
 </html>

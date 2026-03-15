@@ -1,78 +1,39 @@
-const CACHE_NAME = "kseb-tracker-v2-1-0";
-const ASSETS = [
-  "./",
-  "./index.html",
-  "./style.css",
-  "./app.js",
-  "./manifest.json"
-];
+const CACHE = 'kseb-pwa-v3';
+const ASSETS = ['./', './index.html', './app.js', './style.css', './manifest.json',
+  'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js',
+  'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js'];
 
-self.addEventListener("install", event => {
+self.addEventListener('install', e => {
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).catch(() => {}));
   self.skipWaiting();
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS))
-  );
+});
+self.addEventListener('activate', e => {
+  e.waitUntil(caches.keys().then(ks =>
+    Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))));
+  self.clients.claim();
+});
+self.addEventListener('fetch', e => {
+  e.respondWith(caches.match(e.request).then(r => r || fetch(e.request).catch(() => new Response('Offline'))));
 });
 
-self.addEventListener("activate", event => {
-  event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    ).then(() => self.clients.claim())
-  );
+self.addEventListener('push', e => {
+  const data = e.data ? e.data.json() : { title: 'KSEB Tracker', body: 'Time to log your meter readings!' };
+  e.waitUntil(self.registration.showNotification(data.title, {
+    body: data.body, icon: './icons/icon-192.png', badge: './icons/icon-192.png',
+    vibrate: [200, 100, 200], tag: 'kseb-reminder'
+  }));
 });
-
-self.addEventListener("fetch", event => {
-  if (event.request.method !== "GET") return;
-  event.respondWith(
-    caches.match(event.request).then(cached => {
-      return cached || fetch(event.request).then(response => {
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-        return response;
-      }).catch(() => caches.match("./index.html"));
-    })
-  );
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  e.waitUntil(clients.openWindow('./'));
 });
-
-self.addEventListener("push", event => {
-  const data = event.data ? event.data.json() : {};
-  const title = data.title || "KSEB Tracker Reminder";
-  const options = {
-    body: data.body || "Time to update your meter reading.",
-    icon: "./icons/icon-192.png",
-    badge: "./icons/icon-192.png",
-    tag: data.tag || "kseb-reminder",
-    renotify: true,
-    data: { url: data.url || "./" }
-  };
-  event.waitUntil(self.registration.showNotification(title, options));
-});
-
-self.addEventListener("notificationclick", event => {
-  event.notification.close();
-  const targetUrl = event.notification.data?.url || "./";
-
-  event.waitUntil(
-    clients.matchAll({ type: "window", includeUncontrolled: true }).then(clientList => {
-      for (const client of clientList) {
-        if ("focus" in client) return client.focus();
-      }
-      if (clients.openWindow) return clients.openWindow(targetUrl);
-    })
-  );
-});
-
-self.addEventListener("message", event => {
-  if (event.data?.type === "SHOW_LOCAL_NOTIFICATION") {
-    const payload = event.data.payload || {};
-    event.waitUntil(
-      self.registration.showNotification(payload.title || "KSEB Tracker", {
-        body: payload.body || "Reminder",
-        icon: "./icons/icon-192.png",
-        badge: "./icons/icon-192.png",
-        data: { url: payload.url || "./" }
-      })
-    );
+self.addEventListener('message', e => {
+  if (e.data && e.data.type === 'SCHEDULE_NOTIFICATION') {
+    setTimeout(() => {
+      self.registration.showNotification('⚡ KSEB Tracker Reminder', {
+        body: "Don't forget to log today's meter readings!",
+        icon: './icons/icon-192.png', tag: 'kseb-daily'
+      });
+    }, e.data.ms);
   }
 });
