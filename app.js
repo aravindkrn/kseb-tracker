@@ -65,7 +65,7 @@ const S = {
         const db = req.result;
         if (!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME);
       };
-      reqonsuccess = null;
+      // reqonsuccess = null;
       req.onerror = () => reject(req.error);
       req.onsuccess = () => resolve(req.result);
     });
